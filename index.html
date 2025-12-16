@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Juego clicker: ¡Alcanza 1000 puntos en 1 minuto!">
+  <title>1000 en 1 Minuto - Juego Clicker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Título principal -->
+    <h1>🎯 1000 en 1 Minuto</h1>
+
+    <!-- Botones de control -->
+    <div style="display: flex; gap: 15px; justify-content: center; align-items: center; margin-bottom: 20px;">
+      <button id="startBtn" class="btn-primary" style="flex: 1; max-width: 300px;">
+        ▶️ Iniciar Juego
+      </button>
+      <button id="infoBtn" class="btn-info" title="Reglas del juego">
+        ℹ️
+      </button>
+      <button id="muteBtn" class="btn-mute" title="Silenciar sonidos">
+        🔊
+      </button>
+    </div>
+
+    <!-- Contenedor del juego -->
+    <div id="gameContainer" class="hidden">
+      <!-- Panel de estadísticas principales -->
+      <div class="game-card">
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label">⏰ Tiempo</div>
+            <div class="stat-value" id="countdown">60</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">💎 Puntos</div>
+            <div class="stat-value" id="counter">0</div>
+          </div>
+        </div>
+
+        <!-- Barra de progreso -->
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Panel de botones -->
+      <div class="game-card" style="margin-top: 80px;">
+        <div class="button-grid">
+          <!-- Botón de mejora de puntos -->
+          <button id="addPointBtn" class="btn-upgrade tooltip">
+            <div class="upgrade-info">
+              <span>➕</span>
+              <span style="font-size: 0.8em;">Más Puntos</span>
+              <span class="upgrade-cost">💎 2</span>
+              <div class="upgrade-progress-bar">
+                <div id="pointsProgressBar" class="upgrade-progress-fill"></div>
+              </div>
+            </div>
+            <span class="tooltip-text">+1 punto por clic</span>
+          </button>
+
+          <!-- Botón de reducir cooldown -->
+          <button id="reduceCooldownBtn" class="btn-upgrade tooltip">
+            <div class="upgrade-info">
+              <span>⚡</span>
+              <span style="font-size: 0.8em;">Más Rápido</span>
+              <span class="upgrade-cost">💎 5</span>
+              <div id="cooldownIndicators" class="upgrade-indicators"></div>
+            </div>
+            <span class="tooltip-text">-1 segundo de espera</span>
+          </button>
+
+          <!-- Botón de añadir tiempo -->
+          <button id="addTimeBtn" class="btn-warning tooltip">
+            <div class="upgrade-info">
+              <span>⌛</span>
+              <span style="font-size: 0.8em;">Más Tiempo</span>
+              <span class="upgrade-cost">💎 100</span>
+              <div id="timeIndicators" class="upgrade-indicators"></div>
+            </div>
+            <span class="tooltip-text">+10 segundos</span>
+          </button>
+
+          <!-- Botón de victoria instantánea -->
+          <button id="winGameBtn" class="btn-success tooltip">
+            <div class="upgrade-info">
+              <span>🏆</span>
+              <span style="font-size: 0.8em;">Victoria</span>
+              <span class="upgrade-cost">💎 1000</span>
+              <div id="winIndicator" class="upgrade-indicators"></div>
+            </div>
+            <span class="tooltip-text">¡Gana instantáneamente!</span>
+          </button>
+
+          <!-- Botón principal de clic -->
+          <button id="clickBtn" class="btn-click tooltip">
+            👆 ¡CLIC!
+            <span class="tooltip-text">Pulsa para ganar puntos</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenedor de mensajes (victoria/derrota) -->
+    <div id="messages" class="hidden"></div>
+  </div>
+
+  <!-- Modal de información -->
+  <div id="infoModal" class="modal hidden">
+    <div class="modal-content">
+      <span class="modal-close" id="closeModal">&times;</span>
+      <h2>📖 Cómo Jugar</h2>
+      <div class="info-section">
+        <h3>🎯 Objetivo</h3>
+        <p>Tienes 60 segundos para alcanzar los <strong>1000 puntos</strong> y hacerte con la victoria.</p>
+      </div>
+      <div class="info-section">
+        <h3>🎮 Controles</h3>
+        <p>Haz clic en el botón principal para ganar puntos. Después de cada clic, debes esperar un tiempo para poder volver a hacer clic.</p>
+      </div>
+      <div class="info-section">
+        <h3>⚡ Mejoras Disponibles</h3>
+        <ul>
+          <li><strong>➕ Más Puntos (2 💎)</strong> - Ganas +1 punto adicional por clic</li>
+          <li><strong>⚡ Más Rápido (5 💎)</strong> - Reduce la espera en 1 segundo</li>
+          <li><strong>⌛ Más Tiempo (100 💎)</strong> - Añade 10 segundos a tu tiempo</li>
+          <li><strong>🏆 Victoria (1000 💎)</strong> - Ganas instantáneamente</li>
+        </ul>
+      </div>
+      <div class="info-section">
+        <h3>💡 Estrategia</h3>
+        <p>Invierte sabiamente tus puntos en mejoras para maximizar tu ganancia. ¡Combinar velocidad y poder es clave!</p>
+      </div>
+      <div class="modal-footer">
+        <p><strong>👨‍💻 Autor:</strong> Carlos Nieto Sanchez</p>
+        <p><strong>🎮 Versión:</strong> 1.1.0</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script del juego -->
+  <script src="game.js"></script>
+</body>
+</html>
