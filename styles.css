@@ -405,11 +405,47 @@ button.disabled:hover {
   }
   
   .button-grid {
-    grid-template-columns: 1fr;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 10px;
+  }
+  
+  /* Botones de mejora ocupan la primera fila (2 columnas) */
+  #addPointBtn {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  
+  #reduceCooldownBtn {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  
+  /* Segunda fila */
+  #addTimeBtn {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  
+  #winGameBtn {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  
+  /* Botón de clic ocupa toda la tercera fila */
+  #clickBtn {
+    grid-column: 1 / -1;
+    grid-row: 3;
   }
   
   .stat-value {
     font-size: 1.5em;
+  }
+  
+  .btn-click {
+    font-size: 1.5em;
+    padding: 25px;
   }
 }
 
