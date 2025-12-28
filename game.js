@@ -1099,8 +1099,8 @@ class ClickerGame {
         return;
       }
 
-      // increase 1% every 1000ms (1 second)
-      this.state.deathButton.percent = Math.min(100, this.state.deathButton.percent + 1);
+      // increase 2% every 1000ms (1 second)
+      this.state.deathButton.percent = Math.min(100, this.state.deathButton.percent + 2);
       this.updateDeathUI();
       if (this.state.deathButton.percent >= 100) {
         this.clearDeathTimer();
