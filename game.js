@@ -1288,7 +1288,8 @@ class ClickerGame {
   bombArmingComplete() {
     // Pasar a estado armado por 1 segundo
     this.state.bomb.status = 'armed';
-    this.state.bomb.armedRemaining = 1.0;
+    // ahora la ventana de desactivación es de 2 segundos según especificación
+    this.state.bomb.armedRemaining = 2.0;
     this.updateBombUI();
 
     this.timers.bombArmed = setInterval(() => {
@@ -1321,7 +1322,8 @@ class ClickerGame {
     this.state.bomb.status = 'idle';
     this.state.bomb.armingRemaining = 0;
     this.state.bomb.armedRemaining = 0;
-    const PENALTY = 3;
+    // penalización reducida a 2 segundos según petición
+    const PENALTY = 2;
     this.state.countdownTimer = Math.max(0, this.state.countdownTimer - PENALTY);
     this.sounds.error();
     this.showNotification(`- ${PENALTY}s (bomba)`, 'error');
@@ -1363,7 +1365,8 @@ class ClickerGame {
       btn.classList.add('bomb-armed');
       if (iconEl) iconEl.textContent = '✂️';
       if (labelEl) labelEl.textContent = `Desactivar ${this.state.bomb.armedRemaining.toFixed(1)}s`;
-      const pct = Math.round((this.state.bomb.armedRemaining / 1) * 100);
+      // calcular porcentaje en función de la ventana actual (2s)
+      const pct = Math.round((this.state.bomb.armedRemaining / 2) * 100);
       if (fill) fill.style.width = `${pct}%`;
     }
   }
