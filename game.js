@@ -460,6 +460,11 @@ class ClickerGame {
     // Reset death button
     this.clearDeathTimer();
     this.state.deathButton.percent = 0;
+    // Remove any end-game overlay messages so messages area layout stays the same
+    if (this.elements.messages) {
+      const existingOverlay = this.elements.messages.querySelector('.message-overlay');
+      if (existingOverlay) existingOverlay.remove();
+    }
     // If hard mode is off, ensure penalization UIs show disabled
     if (!this.state.hardMode) {
       if (this.elements.bombBtn) this.elements.bombBtn.classList.add('disabled');
@@ -648,20 +653,28 @@ class ClickerGame {
     clearInterval(this.timers.countdown);
     clearInterval(this.timers.cooldown);
     this.sounds.win();
-    this.elements.messages.innerHTML = `
-      <div class="message-box">
-        <h2>🏆 ¡VICTORIA! 🏆</h2>
-        <p style="font-size: 1.5em; margin: 20px 0;">¡Has ganado el juego!</p>
-        <button onclick="game.restartFromUI()" class="btn-primary" style="margin-top: 20px; padding: 15px 30px;">
-          🔄 Jugar de nuevo
-        </button>
-      </div>
-    `;
-    this.elements.messages.classList.remove('hidden');
-    // Hide game UI and show start button again
+    // Create an absolute overlay inside #messages so its position in the flow doesn't change
+    if (this.elements.messages) {
+      // remove previous overlay if any
+      const prev = this.elements.messages.querySelector('.message-overlay');
+      if (prev) prev.remove();
+      const overlay = document.createElement('div');
+      overlay.className = 'message-overlay';
+      overlay.innerHTML = `
+        <div class="message-box">
+          <h2>🏆 ¡VICTORIA! 🏆</h2>
+          <p style="font-size: 1.5em; margin: 20px 0;">¡Has ganado el juego!</p>
+          <button onclick="game.restartFromUI()" class="btn-primary" style="margin-top: 20px; padding: 15px 30px;">
+            🔄 Jugar de nuevo
+          </button>
+        </div>
+      `;
+      this.elements.messages.appendChild(overlay);
+    }
+    // Keep gameContainer visible so the #messages position doesn't change;
+    // remove celebration class but do not hide the container.
     if (this.elements.gameContainer) {
       this.elements.gameContainer.classList.remove('celebrate');
-      this.elements.gameContainer.classList.add('hidden');
     }
     if (this.elements.startBtn) this.elements.startBtn.classList.remove('hidden');
     
@@ -690,7 +703,7 @@ class ClickerGame {
       this.elements.messages = msgs;
     }
 
-    // Build message content
+    // Build overlay message content and append inside #messages so layout doesn't shift
     const lossHtml = `
       <div class="message-box">
         <h2 style="color: #f44336;">⏰ ¡Tiempo agotado!</h2>
@@ -702,20 +715,26 @@ class ClickerGame {
       </div>
     `;
 
-    // Assign and ensure visible
     try {
-      this.elements.messages.innerHTML = lossHtml;
-      if (this.elements.messages.classList) this.elements.messages.classList.remove('hidden');
-      else this.elements.messages.style.display = 'block';
+      if (this.elements.messages) {
+        const prev = this.elements.messages.querySelector('.message-overlay');
+        if (prev) prev.remove();
+        const overlay = document.createElement('div');
+        overlay.className = 'message-overlay';
+        overlay.innerHTML = lossHtml;
+        this.elements.messages.appendChild(overlay);
+      } else {
+        // fallback: append to body
+        const fallback = document.createElement('div');
+        fallback.className = 'message-overlay';
+        fallback.innerHTML = lossHtml;
+        document.body.appendChild(fallback);
+      }
     } catch (e) {
-      // As a last resort, append an alert box to body
-      const fallback = document.createElement('div');
-      fallback.className = 'message-box';
-      fallback.innerHTML = lossHtml;
-      document.body.appendChild(fallback);
+      console.warn('Failed to render loss overlay', e);
     }
 
-    if (this.elements.gameContainer && this.elements.gameContainer.classList) this.elements.gameContainer.classList.add('hidden');
+    // Keep gameContainer visible so #messages stays in place; do not hide it.
     // Show hard mode selector again after game ends
     if (this.elements.hardModeContainer && this.elements.hardModeContainer.classList) this.elements.hardModeContainer.classList.remove('hidden');
   }

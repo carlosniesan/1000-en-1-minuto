@@ -9,30 +9,35 @@
 </head>
 <body>
   <div class="container">
-    <!-- Título principal -->
-    <h1>🎯 1000 en 1 Minuto</h1>
-
-    <!-- Botones de control -->
-    <div style="display: flex; gap: 15px; justify-content: center; align-items: center; margin-bottom: 20px;">
-      <button id="startBtn" class="btn-primary" style="flex: 1; max-width: 300px;">
-        ▶️ Iniciar Juego
-      </button>
-      <!-- Hard mode toggle (solo en pantalla inicial) -->
-      <div id="hardModeContainer" style="display:flex; flex-direction: column; align-items: center; gap:6px;">
-        <label style="font-weight:600; color:#fff; display:flex; align-items:center; gap:10px;">
-          <span style="font-size:0.9em;">Hard Mode</span>
-          <label class="switch">
-            <input id="hardModeToggle" type="checkbox">
-            <span class="slider round"></span>
-          </label>
-        </label>
+    <!-- Título principal y controles -->
+    <div class="title-row">
+      <h1>🎯 1K en 1 Min</h1>
+      <div class="title-controls">
+        <button id="infoBtn" class="btn-info" title="Reglas del juego">ℹ️</button>
+        <button id="muteBtn" class="btn-mute" title="Silenciar sonidos">🔊</button>
       </div>
-      <button id="infoBtn" class="btn-info" title="Reglas del juego">
-        ℹ️
-      </button>
-      <button id="muteBtn" class="btn-mute" title="Silenciar sonidos">
-        🔊
-      </button>
+    </div>
+
+    <!-- Botones de control (fila 1: Start; fila 2: controles) -->
+    <div style="display:flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 30px;">
+      <div style="width:100%; display:flex; justify-content:center;">
+        <button id="startBtn" class="btn-primary" style="flex: 1; max-width: 300px;">
+          ▶️ Iniciar Juego
+        </button>
+      </div>
+
+      <div style="display: flex; gap: 15px; justify-content: center; align-items: center;">
+        <!-- Hard mode toggle (solo en pantalla inicial) -->
+        <div id="hardModeContainer" style="display:flex; flex-direction: column; align-items: center; gap:6px;">
+          <label style="font-weight:600; color:#fff; display:flex; align-items:center; gap:10px;">
+            <span style="font-size:0.9em;">Modo Difícil</span>
+            <label class="switch">
+              <input id="hardModeToggle" type="checkbox">
+              <span class="slider round"></span>
+            </label>
+          </label>
+        </div>
+      </div>
     </div>
 
     <!-- Contenedor del juego -->
@@ -57,7 +62,7 @@
       </div>
 
       <!-- Mensajes (victoria/derrota) entre penalizaciones y mejoras -->
-      <div id="messages" style="margin-top: 8px;"></div>
+      <div id="messages" style="margin-top: -25px;"></div>
 
       <!-- Sección especial (3 botones rojos) situada entre estadísticas y mejoras -->
       <div class="game-card special-section" style="margin-top: 48px;">
@@ -155,7 +160,6 @@
       </div>
     </div>
 
-    
   </div>
 
   <!-- Modal de información -->
@@ -189,10 +193,10 @@
           <li><strong>☠️ Muerte</strong> - Crece un 1% cada segundo, si llega al 100% mueres. Pulsalo continuamente para reducirlo</li>
         </ul>
       </div>
-      <!-- <div class="info-section">
+      <div class="info-section">
         <h3>💡 Estrategia</h3>
-        <p>Invierte sabiamente tus puntos en mejoras para maximizar tu ganancia. ¡Combinar velocidad y poder es clave!</p>
-      </div> -->
+        <p>Invierte sabiamente tus puntos en mejoras para maximizar tu ganancia. Controla los tiempos y los nervios. ¡Combinar velocidad y control es clave!</p>
+      </div>
       <div class="modal-footer">
         <p><strong>👨‍💻 Autor:</strong> Carlos Nieto Sanchez</p>
         <p><strong>🎮 Versión:</strong> 1.2.0</p>

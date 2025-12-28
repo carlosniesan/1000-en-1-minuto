@@ -31,6 +31,36 @@ body {
   overflow-x: hidden;
 }
 
+/* Title controls default placement (near title); repositioned for small screens in media query */
+.title-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 8px;
+}
+
+/* Title row: align title and controls horizontally on wider screens */
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  position: relative;
+}
+
+.title-row h1 {
+  margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+/* Default .title-controls in flow; media query will position absolute on small screens */
+.title-controls {
+  position: static;
+  margin-top: 0;
+}
+
 .container {
   width: 100%;
   max-width: 700px;
@@ -628,6 +658,7 @@ button.disabled:hover {
   min-height: 64px;
   display: block;
   margin-top: 8px;
+  position: relative;
 }
 .message-placeholder {
   color: rgba(0,0,0,0.6);
@@ -636,6 +667,24 @@ button.disabled:hover {
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   font-weight: 600;
+}
+
+/* Overlay wrapper used for victory/defeat panels so #messages keeps its original flow */
+.message-overlay {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 16px);
+  max-width: 640px;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.message-overlay .message-box {
+  margin: 8px 0;
 }
 
 /* Modal de información */
@@ -663,6 +712,14 @@ button.disabled:hover {
   position: relative;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   animation: slideIn 0.3s ease-out;
+}
+
+/* Hacer que el panel de información sea desplazable cuando su contenido exceda la altura
+   de la ventana (útil en móviles). */
+.modal-content {
+  max-height: 80vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 @keyframes slideIn {
@@ -775,5 +832,105 @@ button.disabled:hover {
   to {
     opacity: 0;
     transform: translateY(100vh) rotate(360deg);
+  }
+}
+
+/* Extra small screens tweaks: make layout denser and reduce paddings/sizes */
+@media (max-width: 420px) {
+  :root {
+    --border-radius: 12px;
+  }
+
+  body {
+    padding: 10px;
+  }
+
+  .container {
+    max-width: 420px;
+    padding: 0 6px;
+  }
+
+  h1 {
+    font-size: 1.6em;
+    margin-bottom: 14px;
+  }
+
+  .game-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .stats-grid {
+    gap: 8px;
+  }
+
+  .stat-box {
+    padding: 12px;
+  }
+
+  .stat-value {
+    font-size: 1.25em;
+  }
+
+  .button-grid {
+    gap: 8px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  button {
+    padding: 10px 12px;
+    font-size: 0.9em;
+  }
+
+  .btn-click {
+    font-size: 1.25em;
+    padding: 18px;
+  }
+
+  .btn-info, .btn-mute {
+    width: 44px;
+    height: 44px;
+  }
+
+  #messages {
+    min-height: 48px;
+    margin-top: 6px;
+  }
+
+  .modal-content {
+    padding: 20px;
+    max-width: 92%;
+  }
+
+  .keyboard-hint {
+    font-size: 0.85em;
+    padding: 10px;
+  }
+
+  /* Position title-controls in the same row as the title on small screens
+     to avoid overlapping other controls. Use flex layout (no absolute). */
+  .container {
+    position: relative;
+  }
+
+  h1 {
+    text-align: left;
+    padding-right: 12px;
+    font-size: 1.8em;
+  }
+
+  .title-controls {
+    display: flex !important;
+    position: static;
+    margin-left: auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .title-controls .btn-info, .title-controls .btn-mute {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    font-size: 0.95em;
   }
 }
