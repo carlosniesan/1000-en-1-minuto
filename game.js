@@ -45,14 +45,43 @@ class ClickerGame {
       winUsed: 0
     };
 
+    // Hard mode flag: when true, penalizations are active
+    this.state.hardMode = false;
+
     // Referencias a elementos del DOM
     this.elements = {};
     
     // Timers
     this.timers = {
       countdown: null,
-      cooldown: null
+      cooldown: null,
+      notification: null
     };
+
+    // Estado y timers para la bomba
+    this.state.bomb = {
+      status: 'idle', // 'idle' | 'arming' | 'armed'
+      armingRemaining: 0,
+      armedRemaining: 0
+    };
+
+    this.timers.bombArming = null;
+    this.timers.bombArmed = null;
+
+    // Estado y timers para el segundo botón (2 bombas)
+    this.state.dualBomb = {
+      status: 'idle', // 'idle'|'arming'|'armed'
+      armingRemaining: 0,
+      armedRemaining: 0
+    };
+    this.timers.dualBombArming = null;
+    this.timers.dualBombArmed = null;
+
+    // Estado y timer para el botón de muerte (porcentaje 0-100)
+    this.state.deathButton = {
+      percent: 0
+    };
+    this.timers.death = null;
 
     this.init();
   }
@@ -307,6 +336,9 @@ class ClickerGame {
   cacheDOMElements() {
     this.elements = {
       startBtn: document.getElementById('startBtn'),
+      hardModeToggle: document.getElementById('hardModeToggle'),
+      hardModeContainer: document.getElementById('hardModeContainer'),
+      specialSection: document.querySelector('.special-section'),
       gameContainer: document.getElementById('gameContainer'),
       clickBtn: document.getElementById('clickBtn'),
       counter: document.getElementById('counter'),
@@ -315,6 +347,13 @@ class ClickerGame {
       addPointBtn: document.getElementById('addPointBtn'),
       reduceCooldownBtn: document.getElementById('reduceCooldownBtn'),
       winGameBtn: document.getElementById('winGameBtn'),
+      bombBtn: document.getElementById('bombBtn'),
+      bombProgressFill: document.getElementById('bombProgressFill'),
+      specialBtn2: document.getElementById('specialBtn2'),
+      specialBtnLarge: document.getElementById('specialBtnLarge'),
+      deathIcon: document.getElementById('deathIcon'),
+      deathLabel: document.getElementById('deathLabel'),
+      deathProgressFill: document.getElementById('deathProgressFill'),
       messages: document.getElementById('messages'),
       progressBar: document.getElementById('progressBar'),
       cooldownIndicators: document.getElementById('cooldownIndicators'),
@@ -329,7 +368,20 @@ class ClickerGame {
    */
   attachEventListeners() {
     // Botón de inicio
-    this.elements.startBtn.addEventListener('click', () => this.startGame());
+    if (this.elements.startBtn) this.elements.startBtn.addEventListener('click', () => this.startGame());
+
+    // Hard mode toggle
+    if (this.elements.hardModeToggle) {
+      this.elements.hardModeToggle.addEventListener('change', (e) => this.setHardMode(!!e.target.checked));
+      // initialize toggle UI from state
+      this.elements.hardModeToggle.checked = !!this.state.hardMode;
+    }
+
+    // Apply the current hard mode to UI (ensure buttons reflect the state)
+    // If setHardMode is not yet defined due to ordering, guard it
+    if (typeof this.setHardMode === 'function') {
+      this.setHardMode(!!this.state.hardMode);
+    }
 
     // Botón de mute
     const muteBtn = document.getElementById('muteBtn');
@@ -337,12 +389,25 @@ class ClickerGame {
       muteBtn.addEventListener('click', () => this.toggleMute());
     }
 
-    // Botones del juego
-    this.elements.clickBtn.addEventListener('click', () => this.clickButton());
-    this.elements.addPointBtn.addEventListener('click', () => this.upgradeClickPower());
-    this.elements.reduceCooldownBtn.addEventListener('click', () => this.reduceCooldown());
-    this.elements.addTimeBtn.addEventListener('click', () => this.addTime());
-    this.elements.winGameBtn.addEventListener('click', () => this.winGame());
+    // Botones del juego (comprobando existencia para evitar excepciones)
+    if (this.elements.clickBtn) this.elements.clickBtn.addEventListener('click', () => this.clickButton());
+    if (this.elements.addPointBtn) this.elements.addPointBtn.addEventListener('click', () => this.upgradeClickPower());
+    if (this.elements.reduceCooldownBtn) this.elements.reduceCooldownBtn.addEventListener('click', () => this.reduceCooldown());
+    if (this.elements.addTimeBtn) this.elements.addTimeBtn.addEventListener('click', () => this.addTime());
+    if (this.elements.winGameBtn) this.elements.winGameBtn.addEventListener('click', () => this.winGame());
+
+    // Botones especiales
+    if (this.elements.bombBtn) {
+      // Usar onclick para sobrescribir cualquier handler previo cuando el innerHTML cambia
+      this.elements.bombBtn.onclick = () => { if (this.state.hardMode) this.handleBombButton(); };
+    }
+    if (this.elements.specialBtn2) {
+      this.elements.specialBtn2.onclick = () => { if (this.state.hardMode) this.handleDualBombButton(); };
+    }
+    if (this.elements.specialBtnLarge) {
+      // death button click reduces percent by 1%
+      this.elements.specialBtnLarge.onclick = () => { if (this.state.hardMode) this.handleDeathButtonClick(); };
+    }
   }
 
   /**
@@ -352,13 +417,21 @@ class ClickerGame {
     this.state.gameStarted = true;
     this.state.gameEnded = false;
     this.elements.startBtn.classList.add('hidden');
+    // Hide hard mode selector after starting the game (selection only allowed on initial screen)
+    if (this.elements.hardModeContainer) this.elements.hardModeContainer.classList.add('hidden');
     this.elements.gameContainer.classList.remove('hidden');
-    this.elements.messages.classList.add('hidden');
     
     this.resetGame();
     this.startCountdown();
     this.updateUI();
-    
+
+    // Iniciar automáticamente el ciclo de la bomba y del dualBomb SOLO si hardMode
+    if (this.state.hardMode) {
+      this.startBombArming();
+      this.startDualBombCycle();
+      this.startDeathTimer();
+    }
+
     this.showNotification('¡Juego iniciado! ¡Llega a 1000 puntos!', 'success');
   }
 
@@ -374,6 +447,25 @@ class ClickerGame {
     this.state.countdown = 0;
     this.state.timeUpgradesUsed = 0;
     this.state.winUsed = 0;
+    // Reset bomba
+    this.clearBombTimers();
+    this.state.bomb.status = 'idle';
+    this.state.bomb.armingRemaining = 0;
+    this.state.bomb.armedRemaining = 0;
+    // Reset dual bomb
+    this.clearDualBombTimers();
+    this.state.dualBomb.status = 'idle';
+    this.state.dualBomb.armingRemaining = 0;
+    this.state.dualBomb.armedRemaining = 0;
+    // Reset death button
+    this.clearDeathTimer();
+    this.state.deathButton.percent = 0;
+    // If hard mode is off, ensure penalization UIs show disabled
+    if (!this.state.hardMode) {
+      if (this.elements.bombBtn) this.elements.bombBtn.classList.add('disabled');
+      if (this.elements.specialBtn2) this.elements.specialBtn2.classList.add('disabled');
+      if (this.elements.specialBtnLarge) this.elements.specialBtnLarge.classList.add('disabled');
+    }
     this.updateCooldownIndicators();
     this.updatePointsProgressBar();
     this.updateTimeIndicators();
@@ -384,22 +476,36 @@ class ClickerGame {
    * Maneja el clic en el botón principal
    */
   clickButton() {
-    if (!this.state.canClick || this.state.gameEnded) return;
+    if (this.state.gameEnded) return;
 
-    this.state.canClick = false;
-    this.state.countdown = this.state.cooldown - 1; // Restar 1 porque el primer tick es inmediato
-    this.state.points += this.state.pointsAvailable;
-    
-    this.sounds.click();
-    this.updateUI();
-    this.startCooldown();
-    this.createClickParticles();
-    
-    // Efecto de feedback visual
-    this.elements.clickBtn.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-      this.elements.clickBtn.style.transform = '';
-    }, 100);
+    // Si el botón está disponible, comportamiento normal (sumar puntos y empezar cooldown)
+    if (this.state.canClick) {
+      this.state.canClick = false;
+      this.state.countdown = this.state.cooldown - 1; // Restar 1 porque el primer tick es inmediato
+      this.state.points += this.state.pointsAvailable;
+
+      this.sounds.click();
+      this.updateUI();
+      this.startCooldown();
+      this.createClickParticles();
+
+      // Efecto de feedback visual
+      this.elements.clickBtn.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        this.elements.clickBtn.style.transform = '';
+      }, 100);
+    } else {
+      // Si está en cooldown, el clic penaliza restando 5 segundos del tiempo restante
+      const PENALTY = 5;
+        this.state.countdownTimer = Math.max(0, this.state.countdownTimer - PENALTY);
+        this.sounds.error();
+        this.showNotification(`- ${PENALTY}s (penalizado)`, 'error');
+      this.updateUI();
+
+      if (this.state.countdownTimer <= 0) {
+        this.handleGameLoss();
+      }
+    }
   }
 
   /**
@@ -542,7 +648,6 @@ class ClickerGame {
     clearInterval(this.timers.countdown);
     clearInterval(this.timers.cooldown);
     this.sounds.win();
-    
     this.elements.messages.innerHTML = `
       <div class="message-box">
         <h2>🏆 ¡VICTORIA! 🏆</h2>
@@ -553,21 +658,40 @@ class ClickerGame {
       </div>
     `;
     this.elements.messages.classList.remove('hidden');
-    this.elements.gameContainer.classList.add('celebrate');
+    // Hide game UI and show start button again
+    if (this.elements.gameContainer) {
+      this.elements.gameContainer.classList.remove('celebrate');
+      this.elements.gameContainer.classList.add('hidden');
+    }
+    if (this.elements.startBtn) this.elements.startBtn.classList.remove('hidden');
     
     this.createConfetti();
+    // Show hard mode selector again after game ends
+    if (this.elements.hardModeContainer) this.elements.hardModeContainer.classList.remove('hidden');
   }
 
   /**
    * Maneja la derrota del juego
    */
   handleGameLoss() {
+    // Prevent duplicate loss handling
+    if (this.state.gameEnded) return;
+
     this.state.gameEnded = true;
-    clearInterval(this.timers.countdown);
-    clearInterval(this.timers.cooldown);
+    // Clear all timers to avoid any further effects after death
+    this.clearAllTimers();
     this.sounds.whistle();
-    
-    this.elements.messages.innerHTML = `
+
+    // Ensure messages container exists; if not, create a fallback
+    if (!this.elements.messages) {
+      const msgs = document.getElementById('messages') || document.createElement('div');
+      msgs.id = 'messages';
+      document.body.appendChild(msgs);
+      this.elements.messages = msgs;
+    }
+
+    // Build message content
+    const lossHtml = `
       <div class="message-box">
         <h2 style="color: #f44336;">⏰ ¡Tiempo agotado!</h2>
         <p style="font-size: 1.5em; margin: 20px 0;">Puntos conseguidos: ${this.state.points}/1000</p>
@@ -577,8 +701,43 @@ class ClickerGame {
         </button>
       </div>
     `;
-    this.elements.messages.classList.remove('hidden');
-    this.elements.gameContainer.classList.add('hidden');
+
+    // Assign and ensure visible
+    try {
+      this.elements.messages.innerHTML = lossHtml;
+      if (this.elements.messages.classList) this.elements.messages.classList.remove('hidden');
+      else this.elements.messages.style.display = 'block';
+    } catch (e) {
+      // As a last resort, append an alert box to body
+      const fallback = document.createElement('div');
+      fallback.className = 'message-box';
+      fallback.innerHTML = lossHtml;
+      document.body.appendChild(fallback);
+    }
+
+    if (this.elements.gameContainer && this.elements.gameContainer.classList) this.elements.gameContainer.classList.add('hidden');
+    // Show hard mode selector again after game ends
+    if (this.elements.hardModeContainer && this.elements.hardModeContainer.classList) this.elements.hardModeContainer.classList.remove('hidden');
+  }
+
+  /**
+   * Limpia todos los timers usados por el juego
+   */
+  clearAllTimers() {
+    // Core timers
+    if (this.timers.countdown) { clearInterval(this.timers.countdown); this.timers.countdown = null; }
+    if (this.timers.cooldown) { clearInterval(this.timers.cooldown); this.timers.cooldown = null; }
+
+    // Bomb timers
+    if (this.timers.bombArming) { clearInterval(this.timers.bombArming); this.timers.bombArming = null; }
+    if (this.timers.bombArmed) { clearInterval(this.timers.bombArmed); this.timers.bombArmed = null; }
+
+    // Dual bomb timers
+    if (this.timers.dualBombArming) { clearInterval(this.timers.dualBombArming); this.timers.dualBombArming = null; }
+    if (this.timers.dualBombArmed) { clearInterval(this.timers.dualBombArmed); this.timers.dualBombArmed = null; }
+
+    // Death timer
+    if (this.timers.death) { clearInterval(this.timers.death); this.timers.death = null; }
   }
 
   /**
@@ -610,7 +769,7 @@ class ClickerGame {
       this.elements.clickBtn.innerHTML = `
         <div style="font-size: 2.5em; margin-bottom: 8px;">⏱️ ${this.state.countdown}s</div>
         <div style="font-size: 0.75em; opacity: 0.95; display: flex; justify-content: center; gap: 25px; font-weight: 600;">
-          <span>💎 +${this.state.pointsAvailable} puntos</span>
+          <span>⏬ -5s</span>
           <span>⏱️ Espera: ${this.state.cooldown}s</span>
         </div>
       `;
@@ -622,6 +781,9 @@ class ClickerGame {
     this.updateButtonState(this.elements.reduceCooldownBtn, this.CONFIG.POINTS_FOR_REDUCE_COOLDOWN);
     this.updateButtonState(this.elements.addTimeBtn, this.CONFIG.POINTS_FOR_ADD_TIME);
     this.updateButtonState(this.elements.winGameBtn, this.CONFIG.POINTS_FOR_WIN_GAME);
+
+    // Actualizar UI de la bomba
+    this.updateBombUI();
 
     // Actualizar barra de progreso
     this.updateProgressBar();
@@ -741,6 +903,19 @@ class ClickerGame {
     const buttonGrid = document.querySelector('.button-grid');
     if (!buttonGrid) return;
 
+    const parent = buttonGrid.parentElement;
+    if (!parent) return;
+
+    // Si ya hay una notificación flotante, eliminarla (asegurar singleton)
+    const existing = parent.querySelector('.notification');
+    if (existing) existing.remove();
+
+    // Limpiar timeout anterior si existe
+    if (this.timers && this.timers.notification) {
+      clearTimeout(this.timers.notification);
+      this.timers.notification = null;
+    }
+
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
@@ -764,14 +939,46 @@ class ClickerGame {
     `;
 
     // Posicionar el contenedor como relative para que la notificación se posicione correctamente
-    buttonGrid.parentElement.style.position = 'relative';
-    buttonGrid.parentElement.appendChild(notification);
+    if (!parent.style.position) parent.style.position = 'relative';
+    parent.appendChild(notification);
 
-    setTimeout(() => {
+    // Si estamos en modo Easy (hardMode === false), también publicar la notificación
+    // dentro del contenedor #messages para que sea visible. Asegurarse de una sola.
+    try {
+      if (this.elements && this.elements.messages && !this.state.hardMode) {
+        // No sobreescribir la caja grande de victoria/derrota
+        if (!this.elements.messages.querySelector('.message-box')) {
+          // Eliminar cualquier easy-notification previa
+          const prevEasy = this.elements.messages.querySelector('.easy-notification');
+          if (prevEasy) prevEasy.remove();
+
+          const easyMsg = document.createElement('div');
+          easyMsg.className = `easy-notification easy-${type}`;
+          easyMsg.textContent = message;
+          this.elements.messages.appendChild(easyMsg);
+          // auto-eliminar ligeramente después de la notificación flotante
+          setTimeout(() => { if (easyMsg.parentElement) easyMsg.remove(); }, 2300);
+        }
+      }
+    } catch (e) {
+      // no bloquear si algo falla
+      console.warn('No se pudo postear notificación en #messages', e);
+    }
+
+    // Guardar timeout para permitir limpiar si aparece otra notificación
+    this.timers.notification = setTimeout(() => {
       notification.style.animation = 'notificationSlideUp 0.3s ease-in forwards';
-      setTimeout(() => notification.remove(), 300);
+      setTimeout(() => {
+        if (notification.parentElement) notification.remove();
+        if (this.timers && this.timers.notification) {
+          clearTimeout(this.timers.notification);
+          this.timers.notification = null;
+        }
+      }, 300);
     }, 2000);
   }
+
+  // inline message helpers removed to restore original messaging behavior
 
   /**
    * Crea partículas animadas al hacer clic
@@ -799,6 +1006,346 @@ class ClickerGame {
       document.body.appendChild(particle);
       
       setTimeout(() => particle.remove(), 1000);
+    }
+  }
+
+  /**
+   * Limpia timers relacionados con la bomba
+   */
+  clearBombTimers() {
+    if (this.timers.bombArming) {
+      clearInterval(this.timers.bombArming);
+      this.timers.bombArming = null;
+    }
+    if (this.timers.bombArmed) {
+      clearInterval(this.timers.bombArmed);
+      this.timers.bombArmed = null;
+    }
+  }
+
+  clearDualBombTimers() {
+    if (this.timers.dualBombArming) {
+      clearInterval(this.timers.dualBombArming);
+      this.timers.dualBombArming = null;
+    }
+    if (this.timers.dualBombArmed) {
+      clearInterval(this.timers.dualBombArmed);
+      this.timers.dualBombArmed = null;
+    }
+  }
+
+  clearDeathTimer() {
+    if (this.timers.death) {
+      clearInterval(this.timers.death);
+      this.timers.death = null;
+    }
+  }
+
+  /**
+   * Configura el modo Hard y actualiza la UI de los botones penalizadores
+   */
+  setHardMode(enabled) {
+    this.state.hardMode = !!enabled;
+
+    // Update visual state of special buttons
+    if (this.elements.bombBtn) {
+      if (!this.state.hardMode) this.elements.bombBtn.classList.add('disabled');
+      else this.elements.bombBtn.classList.remove('disabled');
+    }
+    if (this.elements.specialBtn2) {
+      if (!this.state.hardMode) this.elements.specialBtn2.classList.add('disabled');
+      else this.elements.specialBtn2.classList.remove('disabled');
+    }
+    if (this.elements.specialBtnLarge) {
+      if (!this.state.hardMode) this.elements.specialBtnLarge.classList.add('disabled');
+      else this.elements.specialBtnLarge.classList.remove('disabled');
+    }
+
+    // Ensure the checkbox matches state
+    if (this.elements.hardModeToggle) this.elements.hardModeToggle.checked = !!this.state.hardMode;
+    // Show or hide the penalizations section depending on hard mode
+    if (this.elements.specialSection) {
+      if (this.state.hardMode) this.elements.specialSection.classList.remove('hidden');
+      else this.elements.specialSection.classList.add('hidden');
+    }
+  }
+
+  startDeathTimer() {
+    this.clearDeathTimer();
+    this.state.deathButton.percent = 0;
+    this.updateDeathUI();
+    this.timers.death = setInterval(() => {
+      if (this.state.gameEnded) {
+        this.clearDeathTimer();
+        return;
+      }
+
+      // increase 1% every 1000ms (1 second)
+      this.state.deathButton.percent = Math.min(100, this.state.deathButton.percent + 1);
+      this.updateDeathUI();
+      if (this.state.deathButton.percent >= 100) {
+        this.clearDeathTimer();
+        // lose all time
+        this.state.countdownTimer = 0;
+        this.updateUI();
+        this.sounds.whistle();
+        if (!this.state.gameEnded) this.handleGameLoss();
+      }
+    }, 1000);
+  }
+
+  handleDeathButtonClick() {
+    // reduce percent by 1% on each click (and update UI)
+    if (this.state.gameEnded) return;
+    this.state.deathButton.percent = Math.max(0, this.state.deathButton.percent - 1);
+    this.updateDeathUI();
+    // immediate feedback sound
+    this.sounds.click();
+  }
+
+  updateDeathUI() {
+    const btn = this.elements.specialBtnLarge;
+    if (!btn) return;
+    const icon = document.getElementById('deathIcon');
+    const label = document.getElementById('deathLabel');
+    const fill = document.getElementById('deathProgressFill');
+
+    if (this.state.deathButton.percent >= 80) {
+      btn.classList.add('death-critical');
+    } else {
+      btn.classList.remove('death-critical');
+    }
+
+    if (icon) icon.textContent = '☠️';
+    if (label) label.textContent = `Muerte ${this.state.deathButton.percent}%`;
+    if (fill) fill.style.width = `${this.state.deathButton.percent}%`;
+  }
+
+  /**
+   * Maneja el flujo del segundo botón (2 bombas)
+   */
+  handleDualBombButton() {
+    const d = this.state.dualBomb;
+    if (d.status === 'idle') {
+      this.startDualBombCycle();
+    } else if (d.status === 'arming') {
+      this.sounds.error();
+      this.showNotification('Aún armando...', 'info');
+    } else if (d.status === 'armed') {
+      // Pulsado durante el segundo: cancelar penalización y reiniciar
+      this.dualBombSuccess();
+      if (this.elements.specialBtn2) this.elements.specialBtn2.onclick = () => this.handleDualBombButton();
+    }
+  }
+
+  startDualBombCycle() {
+    this.clearDualBombTimers();
+    this.state.dualBomb.status = 'arming';
+    this.state.dualBomb.armingRemaining = 5.0; // 5 segundos de ciclo
+    this.updateDualBombUI();
+
+    this.timers.dualBombArming = setInterval(() => {
+      this.state.dualBomb.armingRemaining = Math.max(0, this.state.dualBomb.armingRemaining - 0.1);
+      this.updateDualBombUI();
+      if (this.state.dualBomb.armingRemaining <= 0) {
+        clearInterval(this.timers.dualBombArming);
+        this.timers.dualBombArming = null;
+        this.dualBombArmingComplete();
+      }
+    }, 100);
+  }
+
+  dualBombArmingComplete() {
+    this.state.dualBomb.status = 'armed';
+    this.state.dualBomb.armedRemaining = 1.0; // 1s ventana
+    this.updateDualBombUI();
+
+    this.timers.dualBombArmed = setInterval(() => {
+      this.state.dualBomb.armedRemaining = Math.max(0, this.state.dualBomb.armedRemaining - 0.05);
+      this.updateDualBombUI();
+      if (this.state.dualBomb.armedRemaining <= 0) {
+        clearInterval(this.timers.dualBombArmed);
+        this.timers.dualBombArmed = null;
+        this.dualBombFail();
+      }
+    }, 50);
+  }
+
+  dualBombSuccess() {
+    this.clearDualBombTimers();
+    this.state.dualBomb.status = 'idle';
+    this.state.dualBomb.armingRemaining = 0;
+    this.state.dualBomb.armedRemaining = 0;
+    this.sounds.upgrade();
+    this.showNotification('¡Desactivadas 2 bombas!', 'success');
+    this.updateDualBombUI();
+    if (!this.state.gameEnded) this.startDualBombCycle();
+  }
+
+  dualBombFail() {
+    this.clearDualBombTimers();
+    this.state.dualBomb.status = 'idle';
+    this.state.dualBomb.armingRemaining = 0;
+    this.state.dualBomb.armedRemaining = 0;
+    const PENALTY = 5;
+    this.state.countdownTimer = Math.max(0, this.state.countdownTimer - PENALTY);
+    this.sounds.error();
+    this.showNotification(`- ${PENALTY}s (2 bombas)`, 'error');
+    this.updateDualBombUI();
+    if (this.state.countdownTimer <= 0) this.handleGameLoss();
+    if (!this.state.gameEnded) this.startDualBombCycle();
+  }
+
+  updateDualBombUI() {
+    const btn = this.elements.specialBtn2;
+    if (!btn) return;
+    const icon = document.getElementById('special2Icon');
+    const label = document.getElementById('special2Label');
+    const fill = document.getElementById('special2ProgressFill');
+
+    if (this.state.dualBomb.status === 'idle') {
+      btn.classList.remove('disabled');
+      btn.classList.remove('bomb-armed');
+      if (icon) icon.textContent = '🔧';
+      if (label) label.textContent = '2 Bombas';
+      if (fill) fill.style.width = '0%';
+    } else if (this.state.dualBomb.status === 'arming') {
+      btn.classList.add('disabled');
+      btn.classList.remove('bomb-armed');
+      if (icon) icon.textContent = '💣💣';
+      if (label) label.textContent = `Armando... ${Math.ceil(this.state.dualBomb.armingRemaining)}s`;
+      const pct = Math.round(((5 - this.state.dualBomb.armingRemaining) / 5) * 100);
+      if (fill) fill.style.width = `${pct}%`;
+    } else if (this.state.dualBomb.status === 'armed') {
+      btn.classList.remove('disabled');
+      btn.classList.add('bomb-armed');
+      if (icon) icon.textContent = '✂️✂️';
+      if (label) label.textContent = `Desactivar ${this.state.dualBomb.armedRemaining.toFixed(1)}s`;
+      const pct = Math.round((this.state.dualBomb.armedRemaining / 1) * 100);
+      if (fill) fill.style.width = `${pct}%`;
+    }
+  }
+
+  /**
+   * Maneja el flujo del botón bomba
+   */
+  handleBombButton() {
+    // Si ya está arming o armed, responder según estado
+    const bomb = this.state.bomb;
+
+    if (bomb.status === 'idle') {
+      // Empezar arming de 3s
+      this.startBombArming();
+    } else if (bomb.status === 'arming') {
+      // Ignorar clicks mientras arma
+      this.sounds.error();
+      this.showNotification('Aún armando...', 'info');
+    } else if (bomb.status === 'armed') {
+      // Si está armado y pulsas dentro del segundo, cancelar penalización
+      this.bombSuccess();
+      // Asegurar que el listener siga activo en el botón tras cambios de innerHTML
+      if (this.elements.bombBtn) this.elements.bombBtn.onclick = () => this.handleBombButton();
+    }
+  }
+
+  startBombArming() {
+    this.clearBombTimers();
+    this.state.bomb.status = 'arming';
+    this.state.bomb.armingRemaining = 3.0; // segundos
+    this.updateBombUI();
+
+    // Actualizar progresivamente cada 100ms
+    this.timers.bombArming = setInterval(() => {
+      this.state.bomb.armingRemaining = Math.max(0, this.state.bomb.armingRemaining - 0.1);
+      this.updateBombUI();
+      if (this.state.bomb.armingRemaining <= 0) {
+        clearInterval(this.timers.bombArming);
+        this.timers.bombArming = null;
+        this.bombArmingComplete();
+      }
+    }, 100);
+  }
+
+  bombArmingComplete() {
+    // Pasar a estado armado por 1 segundo
+    this.state.bomb.status = 'armed';
+    this.state.bomb.armedRemaining = 1.0;
+    this.updateBombUI();
+
+    this.timers.bombArmed = setInterval(() => {
+      this.state.bomb.armedRemaining = Math.max(0, this.state.bomb.armedRemaining - 0.05);
+      this.updateBombUI();
+      if (this.state.bomb.armedRemaining <= 0) {
+        clearInterval(this.timers.bombArmed);
+        this.timers.bombArmed = null;
+        this.bombFail();
+      }
+    }, 50);
+  }
+
+  bombSuccess() {
+    // Jugador pulsó durante la ventana de 1s: cancelar y feedback
+    this.clearBombTimers();
+    this.state.bomb.status = 'idle';
+    this.state.bomb.armingRemaining = 0;
+    this.state.bomb.armedRemaining = 0;
+    this.sounds.upgrade();
+    this.showNotification('¡Bomba desactivada!', 'success');
+    this.updateBombUI();
+    // Reiniciar armado automático inmediatamente
+    if (!this.state.gameEnded) this.startBombArming();
+  }
+
+  bombFail() {
+    // No pulsó durante el segundo: penalizar 3s
+    this.clearBombTimers();
+    this.state.bomb.status = 'idle';
+    this.state.bomb.armingRemaining = 0;
+    this.state.bomb.armedRemaining = 0;
+    const PENALTY = 3;
+    this.state.countdownTimer = Math.max(0, this.state.countdownTimer - PENALTY);
+    this.sounds.error();
+    this.showNotification(`- ${PENALTY}s (bomba)`, 'error');
+    this.updateBombUI();
+    if (this.state.countdownTimer <= 0) {
+      this.handleGameLoss();
+    }
+    // Reiniciar armado automático inmediatamente
+    if (!this.state.gameEnded) this.startBombArming();
+  }
+
+  /**
+   * Actualiza la UI del botón bomba según su estado
+   */
+  updateBombUI() {
+    const btn = this.elements.bombBtn;
+    if (!btn) return;
+
+    // Get child elements (these exist in the HTML and won't be recreated)
+    const iconEl = document.getElementById('bombIcon');
+    const labelEl = document.getElementById('bombLabel');
+    const fill = document.getElementById('bombProgressFill');
+
+    if (this.state.bomb.status === 'idle') {
+      btn.classList.remove('disabled');
+      btn.classList.remove('bomb-armed');
+      if (iconEl) iconEl.textContent = '💣';
+      if (labelEl) labelEl.textContent = 'Bomba';
+      if (fill) fill.style.width = '0%';
+    } else if (this.state.bomb.status === 'arming') {
+      btn.classList.add('disabled');
+      btn.classList.remove('bomb-armed');
+      if (iconEl) iconEl.textContent = '💣';
+      if (labelEl) labelEl.textContent = `Armando... ${Math.ceil(this.state.bomb.armingRemaining)}s`;
+      const pct = Math.round(((3 - this.state.bomb.armingRemaining) / 3) * 100);
+      if (fill) fill.style.width = `${pct}%`;
+    } else if (this.state.bomb.status === 'armed') {
+      btn.classList.remove('disabled');
+      btn.classList.add('bomb-armed');
+      if (iconEl) iconEl.textContent = '✂️';
+      if (labelEl) labelEl.textContent = `Desactivar ${this.state.bomb.armedRemaining.toFixed(1)}s`;
+      const pct = Math.round((this.state.bomb.armedRemaining / 1) * 100);
+      if (fill) fill.style.width = `${pct}%`;
     }
   }
 
@@ -872,4 +1419,36 @@ document.head.appendChild(style);
 let game;
 document.addEventListener('DOMContentLoaded', () => {
   game = new ClickerGame();
+  // Fallback listeners: asegurar que la modal de info abra/cierre incluso si
+  // setupInfoModal() no logró asociar los eventos por algún motivo.
+  try {
+    const infoBtn = document.getElementById('infoBtn');
+    const infoModal = document.getElementById('infoModal');
+    const closeModal = document.getElementById('closeModal');
+    if (infoBtn && infoModal) {
+      infoBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        infoModal.classList.remove('hidden');
+      });
+    }
+    if (closeModal && infoModal) {
+      closeModal.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        infoModal.classList.add('hidden');
+      });
+    }
+    if (infoModal) {
+      infoModal.addEventListener('click', (e) => {
+        if (e.target === infoModal) {
+          e.preventDefault();
+          e.stopPropagation();
+          infoModal.classList.add('hidden');
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('Fallback info modal listeners failed', err);
+  }
 });

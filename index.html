@@ -17,6 +17,16 @@
       <button id="startBtn" class="btn-primary" style="flex: 1; max-width: 300px;">
         ▶️ Iniciar Juego
       </button>
+      <!-- Hard mode toggle (solo en pantalla inicial) -->
+      <div id="hardModeContainer" style="display:flex; flex-direction: column; align-items: center; gap:6px;">
+        <label style="font-weight:600; color:#fff; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:0.9em;">Hard Mode</span>
+          <label class="switch">
+            <input id="hardModeToggle" type="checkbox">
+            <span class="slider round"></span>
+          </label>
+        </label>
+      </div>
       <button id="infoBtn" class="btn-info" title="Reglas del juego">
         ℹ️
       </button>
@@ -46,8 +56,49 @@
         </div>
       </div>
 
-      <!-- Panel de botones -->
-      <div class="game-card" style="margin-top: 80px;">
+      <!-- Mensajes (victoria/derrota) entre penalizaciones y mejoras -->
+      <div id="messages" style="margin-top: 8px;"></div>
+
+      <!-- Sección especial (3 botones rojos) situada entre estadísticas y mejoras -->
+      <div class="game-card special-section" style="margin-top: 48px;">
+        <div class="button-grid">
+          <button id="bombBtn" class="btn-upgrade tooltip">
+            <div class="upgrade-info">
+              <span id="bombIcon" class="bomb-icon">💣</span>
+              <span id="bombLabel" class="bomb-label" style="font-size: 0.8em;">Bomba</span>
+              <div class="bomb-progress-bar">
+                <div id="bombProgressFill" class="bomb-progress-fill"></div>
+              </div>
+            </div>
+            <span class="tooltip-text">Se arma 3s, 1s para pulsar</span>
+          </button>
+
+          <button id="specialBtn2" class="btn-upgrade tooltip">
+            <div class="upgrade-info">
+              <span id="special2Icon">💣💣</span>
+              <span id="special2Label" style="font-size: 0.8em;">Acción</span>
+              <div class="bomb-progress-bar">
+                <div id="special2ProgressFill" class="bomb-progress-fill"></div>
+              </div>
+            </div>
+            <span class="tooltip-text">2 bombas: ciclo 5s, 1s para pulsar</span>
+          </button>
+
+          <button id="specialBtnLarge" class="btn-warning tooltip death-button" style="grid-column: span 2;">
+            <div class="upgrade-info">
+              <span id="deathIcon">☠️</span>
+              <span id="deathLabel" style="font-size: 0.8em;">Botón de Muerte</span>
+              <div class="bomb-progress-bar">
+                <div id="deathProgressFill" class="death-progress-fill"></div>
+              </div>
+            </div>
+            <span class="tooltip-text">Si llega a 100% pierdes todo el tiempo</span>
+          </button>
+        </div>
+      </div>        
+
+        <!-- Panel de botones -->
+        <div class="game-card" style="margin-top: 12px;">
         <div class="button-grid">
           <!-- Botón de mejora de puntos -->
           <button id="addPointBtn" class="btn-upgrade tooltip">
@@ -104,8 +155,7 @@
       </div>
     </div>
 
-    <!-- Contenedor de mensajes (victoria/derrota) -->
-    <div id="messages" class="hidden"></div>
+    
   </div>
 
   <!-- Modal de información -->
@@ -119,7 +169,7 @@
       </div>
       <div class="info-section">
         <h3>🎮 Controles</h3>
-        <p>Haz clic en el botón principal para ganar puntos. Después de cada clic, debes esperar un tiempo para poder volver a hacer clic.</p>
+        <p>Haz clic 👆 en el botón principal para ganar puntos 💎. Después de cada clic, debes esperas ⌛ o recibes una penalización 🟥.</p>
       </div>
       <div class="info-section">
         <h3>⚡ Mejoras Disponibles</h3>
@@ -131,12 +181,21 @@
         </ul>
       </div>
       <div class="info-section">
+        <h3>💣 Modo dificil </h3>
+        <p>En el modo dificil existe unos botones con penalizaciones si no los pulsas a tiempo.</p>
+        <ul>
+          <li><strong>💣 Bomba</strong> - 1 segundo para pulsarlo cada 3 segundos. Penalización 3 segundos</li>
+          <li><strong>💣💣 Doble Bomba</strong> - 1 segundo para pulsarlo cada 5 segundos. Penalización 5 segundos</li>          
+          <li><strong>☠️ Muerte</strong> - Crece un 1% cada segundo, si llega al 100% mueres. Pulsalo continuamente para reducirlo</li>
+        </ul>
+      </div>
+      <!-- <div class="info-section">
         <h3>💡 Estrategia</h3>
         <p>Invierte sabiamente tus puntos en mejoras para maximizar tu ganancia. ¡Combinar velocidad y poder es clave!</p>
-      </div>
+      </div> -->
       <div class="modal-footer">
         <p><strong>👨‍💻 Autor:</strong> Carlos Nieto Sanchez</p>
-        <p><strong>🎮 Versión:</strong> 1.1.0</p>
+        <p><strong>🎮 Versión:</strong> 1.2.0</p>
       </div>
     </div>
   </div>
