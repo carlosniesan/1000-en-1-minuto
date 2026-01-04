@@ -20,6 +20,10 @@
   box-sizing: border-box;
 }
 
+html, body {
+  height: 100%;
+}
+
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: var(--background);
@@ -29,6 +33,18 @@ body {
   align-items: center;
   padding: 20px;
   overflow-x: hidden;
+}
+
+/* Reduce padding on very small screens to avoid accidental scroll */
+@media (max-width: 420px) {
+  body {
+    padding: 8px;
+  }
+}
+
+/* Allow container transforms for scaling to fit small viewports */
+.container {
+  transition: transform 0.18s ease;
 }
 
 /* Title controls default placement (near title); repositioned for small screens in media query */
@@ -66,6 +82,9 @@ body {
   max-width: 700px;
   text-align: center;
   animation: fadeIn 0.5s ease-in;
+  transform-origin: top center;
+  padding-bottom: env(safe-area-inset-bottom);
+  -webkit-transform-origin: top center;
 }
 
 @keyframes fadeIn {

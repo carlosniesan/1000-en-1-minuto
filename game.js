@@ -1473,4 +1473,67 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (err) {
     console.warn('Fallback info modal listeners failed', err);
   }
+
+  // Ajuste dinámico para que la UI quepa en altura móvil sin scroll
+  (function () {
+    const container = document.querySelector('.container');
+    if (!container) return;
+
+    // Asegurar origen de transformación
+    container.style.transformOrigin = container.style.transformOrigin || 'top center';
+
+    function fitToViewport() {
+      // Usar visualViewport si está disponible para medir espacio real (evita problemas con la barra de direcciones móviles)
+      const vv = window.visualViewport || { height: window.innerHeight, width: window.innerWidth, offsetTop: 0 };
+
+      // Restaurar temporalmente el transform para medir el tamaño natural
+      const prevTransform = container.style.transform;
+      container.style.transform = '';
+      // Medir tamaño natural (contenido completo)
+      const naturalH = container.scrollHeight || container.offsetHeight;
+      const naturalW = container.offsetWidth || container.scrollWidth;
+
+      // Espacio disponible con un pequeño margen para evitar overflow por redondeos
+      const margin = 6; // px
+      const availableH = Math.max(0, vv.height - margin);
+      const availableW = Math.max(0, vv.width - margin);
+
+      const scaleH = availableH / naturalH;
+      const scaleW = availableW / naturalW;
+      const scale = Math.min(scaleH, scaleW, 1);
+
+      if (scale < 0.995) {
+        // Aplicar transform centrado horizontalmente, origen arriba
+        container.style.position = 'absolute';
+        container.style.left = '50%';
+        // situar en el top real de la visualViewport para respetar barra de direcciones
+        const topOffset = (vv.offsetTop || 0);
+        container.style.top = `${topOffset}px`;
+        container.style.transform = `translateX(-50%) scale(${scale})`;
+        document.body.style.overflow = 'hidden';
+      } else {
+        // Restaurar a estado normal
+        container.style.transform = '';
+        container.style.position = '';
+        container.style.left = '';
+        container.style.top = '';
+        document.body.style.overflow = '';
+      }
+
+      // Restaurar cualquier transform previo si no estamos escalando
+      if (scale >= 0.995 && prevTransform) container.style.transform = prevTransform;
+    }
+
+    // Ejecutar al cargar y al redimensionar/orientation change; usar passive donde aplique
+    window.addEventListener('resize', fitToViewport, { passive: true });
+    window.addEventListener('orientationchange', () => setTimeout(fitToViewport, 250));
+    // Recalcular también cuando cambia visualViewport (por teclado o barra URL)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', fitToViewport, { passive: true });
+      window.visualViewport.addEventListener('scroll', fitToViewport, { passive: true });
+    }
+
+    // Primer ajuste con pequeña espera para asegurar que fuentes y layout estén listos
+    setTimeout(fitToViewport, 120);
+  })();
 });
